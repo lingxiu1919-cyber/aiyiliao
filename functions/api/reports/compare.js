@@ -1,6 +1,6 @@
-import { getUserId } from '../../../_shared/auth.js';
-import { getTrendData } from '../../../_shared/db.js';
-import { compareWithDeepSeek } from '../../../_shared/ai.js';
+import { getUserId } from '../../_shared/auth.js';
+import { getTrendData } from '../../_shared/db.js';
+import { compareWithDeepSeek } from '../../_shared/ai.js';
 
 /**
  * /api/reports/compare — POST { report_type }

@@ -1,7 +1,7 @@
 /* ── state ── */
 let isLoggedIn = false;
 let authMode = 'login';
-let guestResults = null; // 游客暂存结果
+let guestResults = null;
 
 /* ── auth UI ── */
 function showLogin() { authMode = 'login'; openAuthModal(); }
@@ -33,7 +33,7 @@ async function handleAuth(e) {
   e.preventDefault();
   const username = document.getElementById('authUsername').value.trim();
   const password = document.getElementById('authPassword').value;
-  const endpoint = authMode === 'login' ? '/api/login' : '/api/register';
+  const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
   document.getElementById('authError').textContent = '';
 
   try {
@@ -61,18 +61,12 @@ function onLoginSuccess(username) {
   document.getElementById('userArea').classList.remove('hidden');
   document.getElementById('userDisplay').textContent = '👤 ' + username;
   document.getElementById('historyCard').classList.remove('hidden');
-  // 如果有游客暂存的结果，保存到服务器
-  if (guestResults) {
-    saveGuestResult(guestResults);
-    guestResults = null;
-  }
-  // 隐藏保存提示
   document.getElementById('savePrompt').classList.add('hidden');
   loadHistory();
 }
 
 async function logout() {
-  await fetch('/api/logout', { method: 'POST' });
+  await fetch('/api/auth/logout', { method: 'POST' });
   isLoggedIn = false;
   document.getElementById('authButtons').classList.remove('hidden');
   document.getElementById('userArea').classList.add('hidden');
@@ -84,10 +78,9 @@ function dismissSavePrompt() {
   document.getElementById('savePrompt').classList.add('hidden');
 }
 
-/* ── check login on load ── */
 async function checkLogin() {
   try {
-    const resp = await fetch('/api/me');
+    const resp = await fetch('/api/auth/me');
     const data = await resp.json();
     if (data.logged_in) {
       isLoggedIn = true;
@@ -98,13 +91,6 @@ async function checkLogin() {
       loadHistory();
     }
   } catch (e) { /* guest mode */ }
-}
-
-/* ── save guest result to server after login ── */
-async function saveGuestResult(result) {
-  // 游客分析结果已在前端展示，登录后无需重复调用API
-  // 这里只需刷新历史列表
-  loadHistory();
 }
 
 /* ── upload logic ── */
@@ -133,18 +119,7 @@ function handleFiles(files) {
   currentFile = file;
   const reader = new FileReader();
   reader.onload = e => {
-    if (file.type === 'application/pdf') {
-      previewImg.style.display = 'none';
-      const embed = document.createElement('embed');
-      embed.src = e.target.result;
-      embed.type = 'application/pdf';
-      embed.style.width = '100%';
-      embed.style.height = '300px';
-      embed.style.borderRadius = '8px';
-      uploadPreview.querySelector('img').after(embed);
-    } else {
-      previewImg.src = e.target.result;
-    }
+    previewImg.src = e.target.result;
     dropZone.style.display = 'none'; uploadPreview.classList.remove('hidden'); btnAnalyze.disabled = false;
   };
   reader.readAsDataURL(file);
@@ -155,12 +130,9 @@ btnClearUpload.addEventListener('click', () => {
   uploadPreview.classList.add('hidden');
   dropZone.style.display = 'block';
   btnAnalyze.disabled = true;
-  previewImg.style.display = '';
-  const embed = uploadPreview.querySelector('embed');
-  if (embed) embed.remove();
 });
 
-/* ── analyze ── */
+/* ── analyze (base64 for Cloudflare Workers) ── */
 btnAnalyze.addEventListener('click', async () => {
   if (!currentFile) return;
   btnAnalyze.disabled = true;
@@ -168,21 +140,36 @@ btnAnalyze.addEventListener('click', async () => {
   resultSection.classList.add('hidden');
   historySection.classList.add('hidden');
 
-  const formData = new FormData();
-  formData.append('file', currentFile);
-
   try {
-    const resp = await fetch('/api/analyze', { method: 'POST', body: formData });
+    // Read file as base64 (strip the data:image/xxx;base64, prefix)
+    const reader = new FileReader();
+    const base64Promise = new Promise((resolve, reject) => {
+      reader.onload = e => {
+        const full = e.target.result;
+        const comma = full.indexOf(',');
+        const base64 = comma >= 0 ? full.slice(comma + 1) : full;
+        const ext = currentFile.name.split('.').pop() || 'jpg';
+        resolve({ image_base64: base64, filename: currentFile.name, ext });
+      };
+      reader.onerror = reject;
+    });
+    reader.readAsDataURL(currentFile);
+    const { image_base64, filename, ext } = await base64Promise;
+
+    const resp = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image_base64, filename, ext }),
+    });
+
     if (resp.status === 401) {
-      // 游客也能分析，但结果不保存
-      alert('分析需要登录账号才能保存结果，请先登录或注册');
+      alert('登录后才能保存结果，请先登录或注册');
       showLogin();
       return;
     }
     const data = await resp.json();
     if (data.error) { alert('错误: ' + data.error); return; }
     renderResult(data);
-    // 如果未登录，显示保存提示
     if (!isLoggedIn) {
       document.getElementById('savePrompt').classList.remove('hidden');
     } else {
@@ -200,7 +187,6 @@ btnAnalyze.addEventListener('click', async () => {
 function renderResult(data) {
   resultSection.classList.remove('hidden');
 
-  // Support both flat (from DB) and nested (from /api/analyze) structures
   const ex = data.extraction || data;
   document.getElementById('reportMeta').innerHTML = `
     <span><strong>类型：</strong>${esc(ex.report_type || '未知')}</span>
@@ -258,7 +244,7 @@ async function loadHistory() {
     reportList.innerHTML = html;
     if (reports.length > 0) {
       const latest = reports[0];
-      if (latest.report_type) checkTrend(latest.report_type, latest.id);
+      if (latest.report_type) checkTrend(latest.report_type);
     }
   } catch (e) {
     reportList.innerHTML = '<p class="report-empty">加载失败</p>';
@@ -272,7 +258,7 @@ async function viewReport(id) {
     const data = await resp.json();
     if (data.error) { alert(data.error); return; }
     renderResult(data);
-    if (data.report_type) checkTrend(data.report_type, id);
+    if (data.report_type) checkTrend(data.report_type);
   } catch (e) { alert('加载失败: ' + e.message); }
 }
 
@@ -283,9 +269,9 @@ async function deleteReport(id, ev) {
   loadHistory();
 }
 
-async function checkTrend(type, excludeId) {
+async function checkTrend(type) {
   try {
-    const resp = await fetch('/api/compare', {
+    const resp = await fetch('/api/reports', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ report_type: type })

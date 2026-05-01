@@ -1,0 +1,47 @@
+import { hashPassword, generateToken } from '../../_shared/auth.js';
+import { getUserByUsername } from '../../_shared/db.js';
+
+export async function onRequest(context) {
+  const { request, env } = context;
+  if (request.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+
+  try {
+    const { username, password } = await request.json();
+    if (!username || !password) {
+      return new Response(JSON.stringify({ error: '请输入用户名和密码' }), {
+        status: 400, headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const user = await getUserByUsername(env.DB, username.trim());
+    if (!user) {
+      return new Response(JSON.stringify({ error: '用户名或密码错误' }), {
+        status: 401, headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const hash = await hashPassword(password);
+    if (hash !== user.password_hash) {
+      return new Response(JSON.stringify({ error: '用户名或密码错误' }), {
+        status: 401, headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const token = await generateToken(env.JWT_SECRET, { id: user.id, username: user.username });
+
+    return new Response(JSON.stringify({ ok: true, username: user.username }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Set-Cookie': `token=${token}; HttpOnly; Path=/; Max-Age=604800; SameSite=Lax`,
+      },
+    });
+  } catch (e) {
+    console.error('Login error:', e);
+    return new Response(JSON.stringify({ error: '登录失败' }), {
+      status: 500, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}

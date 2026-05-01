@@ -1,6 +1,6 @@
 reports.db
-uploads/*
-!uploads/.gitkeep
 __pycache__/
 *.pyc
 .env
+uploads/*.jpg
+uploads/*.png

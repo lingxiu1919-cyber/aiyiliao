@@ -1,0 +1,19 @@
+name = "aiyiliao"
+pages_build_output_dir = "./"
+
+# ===== Non-sensitive vars (URLs, model names) =====
+[vars]
+DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+DEEPSEEK_MODEL = "deepseek-chat"
+ZHIPU_BASE_URL = "https://open.bigmodel.cn/api/paas/v4"
+ZHIPU_VISION_MODEL = "glm-4.6v-flashx"
+
+# ===== D1 Database =====
+[[d1_databases]]
+binding = "DB"
+database_name = "aiyiliao-db"
+database_id = "your-database-id-here"
+
+# ===== Compatibility =====
+compatibility_date = "2025-04-01"
+compatibility_flags = ["nodejs_compat"]

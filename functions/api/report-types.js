@@ -1,5 +1,5 @@
-import { getUserId } from '../../_shared/auth.js';
-import { getReportsByUser } from '../../_shared/db.js';
+import { getUserId } from '../_shared/auth.js';
+import { getReportsByUser } from '../_shared/db.js';
 
 /**
  * /api/report-types — GET

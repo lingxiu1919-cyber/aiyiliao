@@ -1,6 +1,6 @@
-import { getUserId } from '../../_shared/auth.js';
-import { getReportsByUser, getReportById, saveReport } from '../../_shared/db.js';
-import { ocrWithVision, structureWithDeepSeek, analyzeWithDeepSeek, compareWithDeepSeek } from '../../_shared/ai.js';
+import { getUserId } from '../_shared/auth.js';
+import { getReportsByUser, getReportById, saveReport } from '../_shared/db.js';
+import { ocrWithVision, structureWithDeepSeek, analyzeWithDeepSeek, compareWithDeepSeek } from '../_shared/ai.js';
 
 export async function onRequest(context) {
   const { request, env } = context;

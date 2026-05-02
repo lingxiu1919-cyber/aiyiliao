@@ -41,7 +41,7 @@ export async function onRequest(context) {
     });
   } catch (e) {
     console.error('Login error:', e);
-    return new Response(JSON.stringify({ error: '登录失败' }), {
+    return new Response(JSON.stringify({ error: '登录失败', detail: e.message }), {
       status: 500, headers: { 'Content-Type': 'application/json' },
     });
   }

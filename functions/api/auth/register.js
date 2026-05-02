@@ -47,7 +47,7 @@ export async function onRequest(context) {
     });
   } catch (e) {
     console.error('Register error:', e);
-    return new Response(JSON.stringify({ error: '注册失败' }), {
+    return new Response(JSON.stringify({ error: '注册失败', detail: e.message, stack: e.stack?.slice(0,500) }), {
       status: 500, headers: { 'Content-Type': 'application/json' },
     });
   }

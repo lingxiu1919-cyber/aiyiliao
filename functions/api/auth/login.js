@@ -29,7 +29,8 @@ export async function onRequest(context) {
       });
     }
 
-    const token = await generateToken(env.JWT_SECRET, { id: user.id, username: user.username });
+    const secret = env.JWT_SECRET || 'aiyiliao-default-jwt-secret-2026';
+    const token = await generateToken(secret, { id: user.id, username: user.username });
 
     return new Response(JSON.stringify({ ok: true, username: user.username }), {
       status: 200,

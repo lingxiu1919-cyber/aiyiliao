@@ -12,7 +12,8 @@ export async function onRequest(context) {
     });
   }
 
-  const payload = await verifyToken(env.JWT_SECRET, match[1]);
+  const secret = env.JWT_SECRET || 'aiyiliao-default-jwt-secret-2026';
+  const payload = await verifyToken(secret, match[1]);
   if (!payload) {
     return new Response(JSON.stringify({ logged_in: false }), {
       status: 200,

@@ -9,7 +9,11 @@ ZHIPU_BASE_URL = "https://open.bigmodel.cn/api/paas/v4"
 ZHIPU_VISION_MODEL = "glm-4.6v-flashx"
 JWT_SECRET = "aiyiliao-jwt-2026-secret-key-keji"
 
-# D1 binding managed via Cloudflare Dashboard (Settings → Functions → D1 Database Bindings)
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "aiyiliao"
+database_id = "7e676ca1-2e21-4eb8-86cd-0c566827f357"
 
 # ===== Compatibility =====
 compatibility_date = "2025-04-01"
